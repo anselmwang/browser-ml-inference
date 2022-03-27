@@ -116,11 +116,31 @@ function create_model_input(encoded) {
 
 async function lm_inference(text) {
   try { 
-    const encoded_ids = await tokenizer.then(t => {
+    let encoded_ids = await tokenizer.then(t => {
       return t.tokenize(text); 
     });
     if(encoded_ids.length === 0) {
       return [0.0, EMOJI_DEFAULT_DISPLAY];
+    }
+    encoded_ids = encoded_ids.slice(0, 510);
+
+    if(encoded_ids.length > 100)
+    {
+      for(const seq_len of [16, 32, 64, 128, 256, 512])
+      {
+        const N_TEST = 50;
+        let acc_duration = 0;
+        for(let i = 0; i < N_TEST; i++)
+        {
+          const model_input = create_model_input(encoded_ids.slice(0, seq_len-2));
+          const start = performance.now();
+          const output =  await session.then(s => { return s.run(model_input,['output_0'])});
+          const duration = (performance.now() - start);
+          acc_duration += duration;
+        }
+        console.log(`${seq_len}\t${(acc_duration/N_TEST).toFixed(1)}`);
+
+      }
     }
     const model_input = create_model_input(encoded_ids);
     const start = performance.now();
